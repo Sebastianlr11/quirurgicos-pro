@@ -14,7 +14,9 @@
       "mcp__claude_ai_Supabase__apply_migration",
       "Bash(cd:*)",
       "mcp__claude_ai_Supabase__get_advisors",
-      "mcp__claude_ai_Supabase__execute_sql"
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npx netlify-cli:*)",
+      "mcp__claude_ai_Supabase__search_docs"
     ]
   }
 }

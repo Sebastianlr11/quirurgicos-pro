@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { useAuthStore, UserRole } from '../stores/useAuthStore';
-import { Shield, UserCheck, Users, UserPlus, Edit2, Save, X, Mail, Lock, Trash2 } from 'lucide-react';
+import { Shield, UserCheck, Users, UserPlus, Edit2, Save, X, Mail, Lock, Trash2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface UserProfile {
@@ -22,6 +22,8 @@ export const UserManagement: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
   const [creating, setCreating] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
 
   // Editing
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -49,24 +51,23 @@ export const UserManagement: React.FC = () => {
 
     setCreating(true);
 
-    // Create user via Supabase Auth admin invite
-    const { data, error } = await supabase.auth.signUp({
-      email: newEmail,
-      password: newPassword,
+    // Create user via Edge Function (server-side, doesn't affect current session)
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email: newEmail, password: newPassword, role: newRole }),
     });
 
-    if (error) {
-      toast.error(error.message);
-      setCreating(false);
-      return;
-    }
+    const result = await res.json();
 
-    if (data.user) {
-      // Set the profile with the chosen role
-      await supabase
-        .from('user_profiles')
-        .upsert({ id: data.user.id, email: newEmail, role: newRole }, { onConflict: 'id' });
-
+    if (!res.ok || result.error) {
+      toast.error(result.error || 'Error al crear usuario');
+    } else {
       toast.success(`Usuario ${newEmail} creado como ${newRole === 'admin' ? 'Administrador' : 'Usuario'}`);
       setNewEmail('');
       setNewPassword('');
@@ -186,7 +187,10 @@ export const UserManagement: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Contraseña</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-premium w-full pl-10" placeholder="Mínimo 6 caracteres" minLength={6} />
+                  <input type={showPassword ? 'text' : 'password'} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-premium w-full pl-10 pr-10" placeholder="Mínimo 6 caracteres" minLength={6} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
               <div>

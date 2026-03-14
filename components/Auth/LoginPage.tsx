@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { Scissors, Sparkles, Mail, Lock, LogIn, ArrowLeft, KeyRound } from 'lucide-react';
+import { Scissors, Sparkles, Mail, Lock, LogIn, ArrowLeft, KeyRound, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type ViewMode = 'login' | 'forgot';
@@ -13,6 +13,7 @@ export const LoginPage: React.FC = () => {
   const [mode, setMode] = useState<ViewMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -95,7 +96,10 @@ export const LoginPage: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Contraseña</label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="input-premium w-full pl-12" placeholder="Tu contraseña" minLength={6} />
+                    <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} className="input-premium w-full pl-12 pr-12" placeholder="Tu contraseña" minLength={6} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 px-6 text-white rounded-xl font-bold transition-all disabled:opacity-50 shadow-lg hover:shadow-xl hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%)' }}>
