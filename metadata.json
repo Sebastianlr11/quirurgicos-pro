@@ -1,0 +1,5 @@
+{
+  "name": "Surgical Payroll Manager",
+  "description": "A comprehensive payroll management tool for surgical product manufacturing. Manage operation rates, employees, production logs, and generate PDF receipts.",
+  "requestFramePermissions": []
+}
