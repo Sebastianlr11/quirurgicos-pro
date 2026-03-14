@@ -115,6 +115,34 @@ export const UserManagement: React.FC = () => {
     }
   };
 
+  const deleteUser = async (userId: string, email: string) => {
+    if (userId === currentUser?.id) {
+      toast.error('No puedes eliminar tu propia cuenta');
+      return;
+    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        toast.error(result.error || 'Error al eliminar usuario');
+      } else {
+        toast.success(`Usuario ${email} eliminado permanentemente`);
+        fetchUsers();
+      }
+    } catch {
+      toast.error('Error de conexión');
+    }
+  };
+
   const revokeUser = async (userId: string, email: string) => {
     if (userId === currentUser?.id) {
       toast.error('No puedes revocar tu propia cuenta');
@@ -329,6 +357,9 @@ export const UserManagement: React.FC = () => {
                 <div className="flex gap-2">
                   <button onClick={() => updateRole(u.id, 'user')} className="flex items-center gap-1.5 px-3 py-2 text-white rounded-lg text-sm font-semibold shadow-md" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                     <UserCheck size={14} /> Activar
+                  </button>
+                  <button onClick={() => deleteUser(u.id, u.email)} className="flex items-center gap-1.5 px-3 py-2 text-white rounded-lg text-sm font-semibold shadow-md bg-red-500 hover:bg-red-600 transition-all">
+                    <Trash2 size={14} /> Eliminar
                   </button>
                 </div>
               </div>
