@@ -52,28 +52,49 @@ export const UserManagement: React.FC = () => {
     setCreating(true);
 
     // Create user via Edge Function (server-side, doesn't affect current session)
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ email: newEmail, password: newPassword, role: newRole }),
-    });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error('Sesión expirada. Vuelve a iniciar sesión.');
+        setCreating(false);
+        return;
+      }
 
-    const result = await res.json();
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ email: newEmail, password: newPassword, role: newRole }),
+      });
 
-    if (!res.ok || result.error) {
-      toast.error(result.error || 'Error al crear usuario');
-    } else {
-      toast.success(`Usuario ${newEmail} creado como ${newRole === 'admin' ? 'Administrador' : 'Usuario'}`);
-      setNewEmail('');
-      setNewPassword('');
-      setNewRole('user');
-      setShowForm(false);
-      fetchUsers();
+      const text = await res.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        console.error('Edge function response:', text);
+        toast.error('Error en el servidor. Intenta de nuevo.');
+        setCreating(false);
+        return;
+      }
+
+      if (!res.ok || result.error) {
+        toast.error(result.error || 'Error al crear usuario');
+      } else {
+        toast.success(`Usuario ${newEmail} creado como ${newRole === 'admin' ? 'Administrador' : 'Usuario'}`);
+        setNewEmail('');
+        setNewPassword('');
+        setNewRole('user');
+        setShowForm(false);
+        fetchUsers();
+      }
+    } catch (err: any) {
+      console.error('Create user error:', err);
+      toast.error('Error de conexión. Verifica tu internet.');
     }
 
     setCreating(false);
