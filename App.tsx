@@ -18,7 +18,6 @@ import { PayrollReports } from './components/PayrollReports';
 import { CompanySettings } from './components/CompanySettings';
 import { UserManagement } from './components/UserManagement';
 import { ToastProvider } from './components/Toast';
-import { MigrationBanner } from './components/MigrationBanner';
 
 function AppContent() {
   const { user } = useAuthStore();
@@ -45,7 +44,6 @@ function AppContent() {
 
   return (
     <Layout>
-      <MigrationBanner />
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/produccion" element={<PayrollEntry />} />
