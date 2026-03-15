@@ -26,31 +26,54 @@ export async function migrateLocalDataToSupabase(): Promise<{ error: string | nu
   const empIdMap: Record<string, string> = {};
 
   try {
-    // 1. Migrate employees
+    // 1. Migrate employees (deduplicate by documentId first)
     if (oldEmps.length > 0) {
-      const empRows = oldEmps.map((e) => ({
-        user_id: userId,
-        full_name: e.fullName,
-        document_id: e.documentId,
-        document_type: e.documentType || 'C.C.',
-        position: e.position || 'Operario',
-        is_active: true,
-      }));
+      // Deduplicate: keep last occurrence of each documentId
+      const empsByDoc = new Map<string, LegacyEmployee>();
+      oldEmps.forEach((e) => empsByDoc.set(e.documentId, e));
+      const uniqueEmps = Array.from(empsByDoc.values());
 
-      const { data: insertedEmps, error: empError } = await supabase
-        .from('employees')
-        .upsert(empRows, { onConflict: 'user_id,document_id' })
-        .select();
+      // Insert one by one to handle conflicts gracefully
+      for (const oldEmp of uniqueEmps) {
+        const row = {
+          user_id: userId,
+          full_name: oldEmp.fullName,
+          document_id: oldEmp.documentId,
+          document_type: oldEmp.documentType || 'C.C.',
+          position: oldEmp.position || 'Operario',
+          is_active: true,
+        };
 
-      if (empError) return { error: `Error migrando empleados: ${empError.message}` };
+        // Try insert, if conflict then fetch existing
+        const { data: inserted, error: insertErr } = await supabase
+          .from('employees')
+          .insert(row)
+          .select()
+          .maybeSingle();
 
-      if (insertedEmps) {
-        // Map old IDs by matching document_id
-        oldEmps.forEach((oldEmp) => {
-          const match = insertedEmps.find((e: any) => e.document_id === oldEmp.documentId);
-          if (match) empIdMap[oldEmp.id] = match.id;
-        });
+        if (inserted) {
+          empIdMap[oldEmp.id] = inserted.id;
+        } else if (insertErr) {
+          // Probably duplicate - fetch existing
+          const { data: existing } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('document_id', oldEmp.documentId)
+            .maybeSingle();
+          if (existing) empIdMap[oldEmp.id] = existing.id;
+        }
       }
+
+      // Also map any duplicate old employees to the same new ID
+      oldEmps.forEach((oldEmp) => {
+        if (!empIdMap[oldEmp.id]) {
+          const canonical = empsByDoc.get(oldEmp.documentId);
+          if (canonical && empIdMap[canonical.id]) {
+            empIdMap[oldEmp.id] = empIdMap[canonical.id];
+          }
+        }
+      });
     }
 
     // 2. Migrate operations
@@ -82,7 +105,7 @@ export async function migrateLocalDataToSupabase(): Promise<{ error: string | nu
     // 3. Migrate work records
     if (oldRecs.length > 0) {
       const recRows = oldRecs
-        .filter((r) => empIdMap[r.employeeId]) // Only records with mapped employees
+        .filter((r) => empIdMap[r.employeeId])
         .map((r) => ({
           user_id: userId,
           employee_id: empIdMap[r.employeeId],
