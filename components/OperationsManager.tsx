@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useOperationStore } from '../stores/useOperationStore';
 import { useCategoryStore } from '../stores/useCategoryStore';
 import { Operation, RawOperationImport } from '../types';
-import { Upload, Download, Plus, Trash2, Edit2, Save, X, Filter, Tag } from 'lucide-react';
+import { Upload, Download, Plus, Trash2, Edit2, Save, X, Filter, Tag, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const OperationsManager: React.FC = () => {
@@ -11,6 +11,7 @@ export const OperationsManager: React.FC = () => {
 
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ name: string; val: string; categoryId: string; isDeduction: boolean }>({ name: '', val: '', categoryId: '', isDeduction: false });
+  const [deletingOp, setDeletingOp] = useState<Operation | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newOpName, setNewOpName] = useState('');
   const [newOpVal, setNewOpVal] = useState('');
@@ -74,10 +75,12 @@ export const OperationsManager: React.FC = () => {
     }
   };
 
-  const handleDelete = async (op: Operation) => {
-    const { error } = await deleteOperation(op.id);
+  const confirmDelete = async () => {
+    if (!deletingOp) return;
+    const { error } = await deleteOperation(deletingOp.id);
     if (error) toast.error(error);
-    else toast.success('Operación eliminada');
+    else toast.success(`"${deletingOp.nombre_operacion}" eliminada`);
+    setDeletingOp(null);
   };
 
   const startEdit = (op: Operation) => {
@@ -92,19 +95,57 @@ export const OperationsManager: React.FC = () => {
 
   const saveEdit = async (id: string) => {
     const val = parseFloat(editForm.val);
-    const { error } = await updateOperation(id, {
+    if (!editForm.name || isNaN(val)) {
+      toast.error('Nombre y valor son requeridos');
+      return;
+    }
+    const updates: any = {
       nombre_operacion: editForm.name,
       valor_cop: val,
-      category_id: editForm.categoryId || null,
       is_deduction: val < 0,
-    });
-    if (error) toast.error(error);
-    else toast.success('Operación actualizada');
-    setIsEditing(null);
+    };
+    // Only include category_id if it has a value, otherwise set to null
+    updates.category_id = editForm.categoryId || null;
+
+    const { error } = await updateOperation(id, updates);
+    if (error) {
+      toast.error('Error al guardar: ' + error);
+    } else {
+      toast.success(`"${editForm.name}" actualizada correctamente`);
+      setIsEditing(null);
+    }
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Delete confirmation modal */}
+      {deletingOp && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-full" style={{ background: 'linear-gradient(135deg, #fecaca, #fca5a5)' }}>
+                <AlertTriangle className="text-red-700" size={22} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Eliminar Operación</h3>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-2">
+              ¿Estás seguro de que quieres eliminar esta operación?
+            </p>
+            <p className="font-bold text-slate-800 dark:text-white mb-6">
+              "{deletingOp.nombre_operacion}" - ${deletingOp.valor_cop.toLocaleString()}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeletingOp(null)} className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-all">
+                Cancelar
+              </button>
+              <button onClick={confirmDelete} className="flex-1 px-4 py-3 text-white rounded-xl font-semibold transition-all shadow-lg" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div>
@@ -210,7 +251,7 @@ export const OperationsManager: React.FC = () => {
                         ) : (
                           <>
                             <button onClick={() => startEdit(op)} className="text-slate-400 hover:text-teal-600"><Edit2 size={16} /></button>
-                            <button onClick={() => handleDelete(op)} className="text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
+                            <button onClick={() => setDeletingOp(op)} className="text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
                           </>
                         )}
                       </div>
