@@ -4,7 +4,7 @@ import { useOperationStore } from '../stores/useOperationStore';
 import { useRecordStore } from '../stores/useRecordStore';
 import { EditRecordModal } from './EditRecordModal';
 import { WorkRecord } from '../types';
-import { Search, PlusCircle, History, Trash2, TrendingUp, Package, Edit2 } from 'lucide-react';
+import { Search, PlusCircle, History, Trash2, TrendingUp, Package, Edit2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const PayrollEntry: React.FC = () => {
@@ -19,6 +19,7 @@ export const PayrollEntry: React.FC = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [editingRecord, setEditingRecord] = useState<WorkRecord | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredOps = useMemo(() =>
     operations.filter((op) => op.nombre_operacion.toLowerCase().includes(searchOp.toLowerCase())),
@@ -27,26 +28,39 @@ export const PayrollEntry: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEmpId || !selectedOpId || quantity <= 0) return;
+    if (!selectedEmpId || !selectedOpId || quantity <= 0 || isSubmitting) return;
 
     const op = operations.find((o) => o.id === selectedOpId);
     if (!op) return;
 
-    const { error } = await addRecord({
-      employee_id: selectedEmpId,
-      operation_id: selectedOpId,
-      quantity,
-      date,
-      snapshot_operation_name: op.nombre_operacion,
-      snapshot_unit_price: op.valor_cop,
-    });
+    setIsSubmitting(true);
+    try {
+      const { error } = await addRecord({
+        employee_id: selectedEmpId,
+        operation_id: selectedOpId,
+        quantity,
+        date,
+        snapshot_operation_name: op.nombre_operacion,
+        snapshot_unit_price: op.valor_cop,
+      });
 
-    if (error) toast.error(error);
-    else {
-      toast.success('Registro agregado');
-      setQuantity(1);
-      setSelectedOpId('');
-      setSearchOp('');
+      if (error) {
+        if (error === 'No autenticado') {
+          toast.error('Sesión expirada. Recargando...');
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          toast.error(error);
+        }
+      } else {
+        toast.success('Registro agregado');
+        setQuantity(1);
+        setSelectedOpId('');
+        setSearchOp('');
+      }
+    } catch (err) {
+      toast.error('Error inesperado. Intenta de nuevo.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -188,8 +202,11 @@ export const PayrollEntry: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Cantidad</label>
                   <input type="number" min="1" required value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value) || 0)} className="input-premium w-full text-center font-bold text-2xl" />
                 </div>
-                <button type="submit" disabled={!selectedEmpId || !selectedOpId || quantity <= 0} className="flex-1 flex items-center justify-center gap-2 py-4 px-6 text-white rounded-xl font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-1" style={{ background: (!selectedEmpId || !selectedOpId || quantity <= 0) ? '#94a3b8' : 'linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%)' }}>
-                  <PlusCircle size={22} /> Agregar Registro
+                <button type="submit" disabled={!selectedEmpId || !selectedOpId || quantity <= 0 || isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-4 px-6 text-white rounded-xl font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-1" style={{ background: (!selectedEmpId || !selectedOpId || quantity <= 0 || isSubmitting) ? '#94a3b8' : 'linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%)' }}>
+                  {isSubmitting
+                    ? <><Loader2 size={22} className="animate-spin" /> Guardando...</>
+                    : <><PlusCircle size={22} /> Agregar Registro</>
+                  }
                 </button>
               </div>
             </form>
