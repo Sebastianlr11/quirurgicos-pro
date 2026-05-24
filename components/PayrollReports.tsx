@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useEmployeeStore } from '../stores/useEmployeeStore';
 import { useRecordStore } from '../stores/useRecordStore';
 import { useOperationStore } from '../stores/useOperationStore';
@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 export const PayrollReports: React.FC = () => {
   const employees = useEmployeeStore((s) => s.employees);
   const operations = useOperationStore((s) => s.operations);
-  const { records, updateRecord, deleteRecord, deleteRecords: deleteRecordRange } = useRecordStore();
+  const { records, fetchRecords, updateRecord, deleteRecord, deleteRecords: deleteRecordRange } = useRecordStore();
   const companySettings = useCompanyStore((s) => s.settings);
 
   const [selectedEmpId, setSelectedEmpId] = useState('');
@@ -27,6 +27,16 @@ export const PayrollReports: React.FC = () => {
   const [endDate, setEndDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
   );
+  const isFirstMount = useRef(true);
+
+  // Re-fetch records when the date range changes (skip first mount — App already fetched current month)
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    fetchRecords(startDate, endDate);
+  }, [startDate, endDate]);
 
   const filteredRecords = useMemo(() => {
     if (!selectedEmpId) return [];

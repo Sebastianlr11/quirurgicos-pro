@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuthStore } from './stores/useAuthStore';
 import { useEmployeeStore } from './stores/useEmployeeStore';
 import { useOperationStore } from './stores/useOperationStore';
@@ -20,6 +21,13 @@ import { UserManagement } from './components/UserManagement';
 import { ToastProvider } from './components/Toast';
 import { MigrationBanner } from './components/MigrationBanner';
 
+function getCurrentMonthRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  return { start, end };
+}
+
 function AppContent() {
   const { user } = useAuthStore();
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
@@ -31,9 +39,20 @@ function AppContent() {
 
   useEffect(() => {
     if (user) {
-      fetchEmployees();
-      fetchOperations();
-      fetchRecords();
+      const { start, end } = getCurrentMonthRange();
+
+      fetchEmployees().then(({ error }) => {
+        if (error) toast.error(`Error cargando empleados: ${error}`);
+      });
+
+      fetchOperations().then(({ error }) => {
+        if (error) toast.error(`Error cargando operaciones: ${error}`);
+      });
+
+      fetchRecords(start, end).then(({ error }) => {
+        if (error) toast.error(`Error cargando registros: ${error}`);
+      });
+
       fetchSettings();
       fetchCategories().then(() => initDefaults());
     }

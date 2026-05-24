@@ -5,7 +5,7 @@ import { WorkRecord } from '../types';
 interface RecordState {
   records: WorkRecord[];
   loading: boolean;
-  fetchRecords: (startDate?: string, endDate?: string) => Promise<void>;
+  fetchRecords: (startDate?: string, endDate?: string) => Promise<{ error: string | null }>;
   addRecord: (rec: Omit<WorkRecord, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<{ error: string | null }>;
   updateRecord: (id: string, data: Partial<WorkRecord>) => Promise<{ error: string | null }>;
   deleteRecord: (id: string) => Promise<{ error: string | null }>;
@@ -32,6 +32,7 @@ export const useRecordStore = create<RecordState>((set, get) => ({
       set({ records: data as WorkRecord[] });
     }
     set({ loading: false });
+    return { error: error?.message ?? null };
   },
 
   addRecord: async (rec) => {

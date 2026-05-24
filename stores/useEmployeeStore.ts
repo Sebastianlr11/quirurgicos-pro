@@ -5,7 +5,7 @@ import { Employee } from '../types';
 interface EmployeeState {
   employees: Employee[];
   loading: boolean;
-  fetchEmployees: () => Promise<void>;
+  fetchEmployees: () => Promise<{ error: string | null }>;
   addEmployee: (emp: Omit<Employee, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<{ error: string | null }>;
   updateEmployee: (id: string, data: Partial<Employee>) => Promise<{ error: string | null }>;
   deleteEmployee: (id: string) => Promise<{ error: string | null }>;
@@ -28,10 +28,12 @@ export const useEmployeeStore = create<EmployeeState>((set, get) => ({
       set({ employees: data as Employee[] });
     }
     set({ loading: false });
+    return { error: error?.message ?? null };
   },
 
   addEmployee: async (emp) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { error: 'No autenticado' };
 
     const { data, error } = await supabase
@@ -73,7 +75,8 @@ export const useEmployeeStore = create<EmployeeState>((set, get) => ({
   },
 
   importEmployees: async (emps) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { error: 'No autenticado' };
 
     // Deduplicate by document_id (keep last occurrence)

@@ -30,7 +30,8 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   },
 
   initDefaults: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return;
 
     // Check if categories already exist
@@ -47,7 +48,8 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   },
 
   addCategory: async (name) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { error: 'No autenticado' };
 
     const maxOrder = Math.max(0, ...get().categories.map((c) => c.display_order));

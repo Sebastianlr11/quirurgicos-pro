@@ -5,7 +5,7 @@ import { Operation } from '../types';
 interface OperationState {
   operations: Operation[];
   loading: boolean;
-  fetchOperations: () => Promise<void>;
+  fetchOperations: () => Promise<{ error: string | null }>;
   addOperation: (op: Omit<Operation, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<{ error: string | null }>;
   updateOperation: (id: string, data: Partial<Operation>) => Promise<{ error: string | null }>;
   deleteOperation: (id: string) => Promise<{ error: string | null }>;
@@ -28,6 +28,7 @@ export const useOperationStore = create<OperationState>((set, get) => ({
       set({ operations: data as Operation[] });
     }
     set({ loading: false });
+    return { error: error?.message ?? null };
   },
 
   addOperation: async (op) => {

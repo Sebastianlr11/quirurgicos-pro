@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useEmployeeStore } from '../stores/useEmployeeStore';
 import { useOperationStore } from '../stores/useOperationStore';
 import { useRecordStore } from '../stores/useRecordStore';
@@ -9,12 +9,13 @@ type DateFilter = 'today' | 'week' | 'month' | 'fortnight' | 'custom';
 export const Dashboard: React.FC = () => {
   const employees = useEmployeeStore((s) => s.employees);
   const operations = useOperationStore((s) => s.operations);
-  const records = useRecordStore((s) => s.records);
+  const { records, fetchRecords } = useRecordStore();
   const loading = useRecordStore((s) => s.loading);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>('month');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const isFirstMount = useRef(true);
 
   const dateRange = useMemo(() => {
     const now = new Date();
@@ -51,6 +52,16 @@ export const Dashboard: React.FC = () => {
         return { start: today, end: today };
     }
   }, [dateFilter, customStart, customEnd]);
+
+  // Re-fetch records when date range changes (skip first mount — App already fetched current month)
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    if (dateFilter === 'custom' && (!customStart || !customEnd)) return;
+    fetchRecords(dateRange.start, dateRange.end);
+  }, [dateRange]);
 
   const filteredRecords = useMemo(() => {
     return records.filter((r) => r.date >= dateRange.start && r.date <= dateRange.end);
@@ -101,9 +112,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden rounded-2xl p-8 shadow-xl" style={{
-        background: 'linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%)'
-      }}>
+      <div className="relative overflow-hidden rounded-2xl p-8 shadow-xl bg-gradient-to-br from-teal-500 to-cyan-500">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
             <Sparkles className="text-white/90" size={28} />
@@ -131,10 +140,9 @@ export const Dashboard: React.FC = () => {
             onClick={() => setDateFilter(key)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               dateFilter === key
-                ? 'text-white shadow-md'
+                ? 'bg-gradient-to-br from-teal-500 to-cyan-500 text-white shadow-md'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'
             }`}
-            style={dateFilter === key ? { background: 'linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%)' } : {}}
           >
             {label}
           </button>
@@ -151,10 +159,10 @@ export const Dashboard: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Employees */}
-        <div className="stat-card animate-fade-in stagger-1 group bg-white dark:bg-slate-800" style={{ borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
-          <div className="absolute top-0 left-0 right-0 h-1 transition-opacity duration-300 opacity-0 group-hover:opacity-100" style={{ background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }} />
+        <div className="stat-card animate-fade-in stagger-1 group bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-md border border-black/5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-violet-500 transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl shadow-lg" style={{ background: 'linear-gradient(135deg, #dbeafe, #ede9fe)' }}>
+            <div className="p-3 rounded-xl shadow-lg bg-gradient-to-br from-blue-100 to-violet-100">
               <Users className="text-blue-600" size={28} />
             </div>
             <div>
@@ -165,10 +173,10 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Records */}
-        <div className="stat-card animate-fade-in stagger-2 group bg-white dark:bg-slate-800" style={{ borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
-          <div className="absolute top-0 left-0 right-0 h-1 transition-opacity duration-300 opacity-0 group-hover:opacity-100" style={{ background: 'linear-gradient(90deg, #14b8a6, #06b6d4)' }} />
+        <div className="stat-card animate-fade-in stagger-2 group bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-md border border-black/5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-cyan-500 transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl shadow-lg" style={{ background: 'linear-gradient(135deg, #ccfbf1, #cffafe)' }}>
+            <div className="p-3 rounded-xl shadow-lg bg-gradient-to-br from-teal-50 to-cyan-100">
               <ClipboardList className="text-teal-600" size={28} />
             </div>
             <div>
@@ -179,10 +187,10 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Income */}
-        <div className="stat-card animate-fade-in stagger-3 group bg-white dark:bg-slate-800" style={{ borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
-          <div className="absolute top-0 left-0 right-0 h-1 transition-opacity duration-300 opacity-0 group-hover:opacity-100" style={{ background: 'linear-gradient(90deg, #10b981, #34d399)' }} />
+        <div className="stat-card animate-fade-in stagger-3 group bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-md border border-black/5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl shadow-lg" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>
+            <div className="p-3 rounded-xl shadow-lg bg-gradient-to-br from-emerald-100 to-teal-100">
               <Wallet className="text-emerald-600" size={28} />
             </div>
             <div>
@@ -200,10 +208,10 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Operations */}
-        <div className="stat-card animate-fade-in stagger-4 group bg-white dark:bg-slate-800" style={{ borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
-          <div className="absolute top-0 left-0 right-0 h-1 transition-opacity duration-300 opacity-0 group-hover:opacity-100" style={{ background: 'linear-gradient(90deg, #f59e0b, #f97316)' }} />
+        <div className="stat-card animate-fade-in stagger-4 group bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-md border border-black/5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500 transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl shadow-lg" style={{ background: 'linear-gradient(135deg, #fef3c7, #fed7aa)' }}>
+            <div className="p-3 rounded-xl shadow-lg bg-gradient-to-br from-amber-100 to-orange-100">
               <TrendingUp className="text-orange-600" size={28} />
             </div>
             <div>
@@ -217,7 +225,7 @@ export const Dashboard: React.FC = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Employees */}
-        <div className="glass-card p-6 bg-white dark:bg-slate-800" style={{ borderRadius: '1.5rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+        <div className="glass-card p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-lg">
           <div className="flex items-center gap-3 mb-6">
             <Trophy className="text-amber-500" size={24} />
             <h3 className="text-xl font-bold text-slate-800">Top Empleados - Ganancias</h3>
@@ -264,7 +272,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Top Operations */}
-        <div className="glass-card p-6 bg-white dark:bg-slate-800" style={{ borderRadius: '1.5rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+        <div className="glass-card p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-lg">
           <div className="flex items-center gap-3 mb-6">
             <Activity className="text-teal-600" size={24} />
             <h3 className="text-xl font-bold text-slate-800">Operaciones Más Realizadas</h3>

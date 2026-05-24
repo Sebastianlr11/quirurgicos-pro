@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { supabase } from '../services/supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
 
+// Module-level: garantiza un único listener activo aunque initialize() se llame más de una vez
+let _authSubscription: { unsubscribe: () => void } | null = null;
+
 export type UserRole = 'admin' | 'user' | 'pending';
 
 interface UserProfile {
@@ -38,7 +41,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await get().fetchProfile();
     }
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (_authSubscription) {
+      _authSubscription.unsubscribe();
+      _authSubscription = null;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const user = session?.user ?? null;
       set({ session, user });
       if (user) {
@@ -47,6 +55,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ profile: null });
       }
     });
+
+    _authSubscription = subscription;
   },
 
   fetchProfile: async () => {
