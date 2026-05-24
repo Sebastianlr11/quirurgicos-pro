@@ -29,7 +29,11 @@ function getCurrentMonthRange() {
 }
 
 function AppContent() {
-  const { user } = useAuthStore();
+  // Usar user?.id (string primitivo) en lugar del objeto user completo.
+  // Así el useEffect solo se dispara cuando el usuario realmente cambia
+  // (login / logout), no en cada refresco de token donde Supabase crea
+  // un nuevo objeto User con el mismo ID.
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
   const fetchOperations = useOperationStore((s) => s.fetchOperations);
   const fetchRecords = useRecordStore((s) => s.fetchRecords);
@@ -38,7 +42,7 @@ function AppContent() {
   const darkMode = useUIStore((s) => s.darkMode);
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       const { start, end } = getCurrentMonthRange();
 
       fetchEmployees().then(({ error }) => {
@@ -56,7 +60,7 @@ function AppContent() {
       fetchSettings();
       fetchCategories().then(() => initDefaults());
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
