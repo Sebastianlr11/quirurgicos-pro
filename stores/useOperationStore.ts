@@ -31,7 +31,8 @@ export const useOperationStore = create<OperationState>((set, get) => ({
   },
 
   addOperation: async (op) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { error: 'No autenticado' };
 
     const { data, error } = await supabase
@@ -73,7 +74,8 @@ export const useOperationStore = create<OperationState>((set, get) => ({
   },
 
   importOperations: async (ops) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { error: 'No autenticado' };
 
     const rows = ops.map((o) => ({

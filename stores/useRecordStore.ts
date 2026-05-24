@@ -35,7 +35,8 @@ export const useRecordStore = create<RecordState>((set, get) => ({
   },
 
   addRecord: async (rec) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { error: 'No autenticado' };
 
     const { data, error } = await supabase
@@ -76,7 +77,8 @@ export const useRecordStore = create<RecordState>((set, get) => ({
   },
 
   deleteRecords: async (startDate?: string, endDate?: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { error: 'No autenticado' };
 
     let query = supabase
