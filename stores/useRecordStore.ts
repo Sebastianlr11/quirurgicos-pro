@@ -18,21 +18,27 @@ export const useRecordStore = create<RecordState>((set, get) => ({
 
   fetchRecords: async (startDate?: string, endDate?: string) => {
     set({ loading: true });
-    let query = supabase
-      .from('work_records')
-      .select('*')
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false });
+    try {
+      let query = supabase
+        .from('work_records')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false });
 
-    if (startDate) query = query.gte('date', startDate);
-    if (endDate) query = query.lte('date', endDate);
+      if (startDate) query = query.gte('date', startDate);
+      if (endDate) query = query.lte('date', endDate);
 
-    const { data, error } = await query;
-    if (!error && data) {
-      set({ records: data as WorkRecord[] });
+      const { data, error } = await query;
+      if (!error && data) {
+        set({ records: data as WorkRecord[] });
+      }
+      return { error: error?.message ?? null };
+    } catch (err) {
+      return { error: (err as Error).message };
+    } finally {
+      // Garantiza que loading siempre vuelve a false, incluso si hay una excepción JS
+      set({ loading: false });
     }
-    set({ loading: false });
-    return { error: error?.message ?? null };
   },
 
   addRecord: async (rec) => {

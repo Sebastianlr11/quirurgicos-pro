@@ -47,6 +47,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // INITIAL_SESSION ya fue manejado por getSession() arriba — ignorarlo evita
+      // un segundo set({ user }) que desencadena un fetch duplicado en App.tsx.
+      if (_event === 'INITIAL_SESSION') return;
+
       const user = session?.user ?? null;
       set({ session, user });
       if (user) {
