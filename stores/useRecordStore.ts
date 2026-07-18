@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../services/supabaseClient';
+import { useAuthStore } from './useAuthStore';
 import { WorkRecord } from '../types';
 
 interface RecordState {
@@ -42,50 +43,62 @@ export const useRecordStore = create<RecordState>((set, get) => ({
   },
 
   addRecord: async (rec) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
+    // Leemos el user del store (síncrono) en vez de getSession() (await que puede colgarse).
+    const user = useAuthStore.getState().user;
     if (!user) return { error: 'No autenticado' };
 
-    const { data, error } = await supabase
-      .from('work_records')
-      .insert({ ...rec, user_id: user.id })
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('work_records')
+        .insert({ ...rec, user_id: user.id })
+        .select()
+        .single();
 
-    if (error) return { error: error.message };
-    set({ records: [data as WorkRecord, ...get().records] });
-    return { error: null };
+      if (error) return { error: error.message };
+      set({ records: [data as WorkRecord, ...get().records] });
+      return { error: null };
+    } catch (err) {
+      // Timeout / red caída: devolvemos error claro en vez de colgar el botón para siempre.
+      return { error: (err as Error).message || 'Error de conexión. Reintenta.' };
+    }
   },
 
   updateRecord: async (id, updates) => {
-    const { data, error } = await supabase
-      .from('work_records')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('work_records')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
 
-    if (error) return { error: error.message };
-    set({
-      records: get().records.map((r) => (r.id === id ? (data as WorkRecord) : r)),
-    });
-    return { error: null };
+      if (error) return { error: error.message };
+      set({
+        records: get().records.map((r) => (r.id === id ? (data as WorkRecord) : r)),
+      });
+      return { error: null };
+    } catch (err) {
+      return { error: (err as Error).message || 'Error de conexión. Reintenta.' };
+    }
   },
 
   deleteRecord: async (id) => {
-    const { error } = await supabase
-      .from('work_records')
-      .delete()
-      .eq('id', id);
+    try {
+      const { error } = await supabase
+        .from('work_records')
+        .delete()
+        .eq('id', id);
 
-    if (error) return { error: error.message };
-    set({ records: get().records.filter((r) => r.id !== id) });
-    return { error: null };
+      if (error) return { error: error.message };
+      set({ records: get().records.filter((r) => r.id !== id) });
+      return { error: null };
+    } catch (err) {
+      return { error: (err as Error).message || 'Error de conexión. Reintenta.' };
+    }
   },
 
   deleteRecords: async (startDate?: string, endDate?: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
+    const user = useAuthStore.getState().user;
     if (!user) return { error: 'No autenticado' };
 
     let query = supabase

@@ -16,7 +16,11 @@ export const PayrollEntry: React.FC = () => {
   const [selectedOpId, setSelectedOpId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [searchOp, setSearchOp] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => {
+    // Fecha LOCAL (no UTC) para que no se corra al día siguiente por la noche.
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [editingRecord, setEditingRecord] = useState<WorkRecord | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -87,11 +87,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signIn: async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
 
-    // Profile will be fetched by onAuthStateChange
-    // But we need to wait a moment for it
+    // Seteamos el user del propio resultado del login (síncrono), en vez de
+    // depender del listener onAuthStateChange que corre de forma asíncrona.
+    // Así fetchProfile() encuentra el user y el bloqueo de "cuenta pendiente" funciona siempre.
+    if (data.user) set({ user: data.user, session: data.session });
     await get().fetchProfile();
 
     const profile = get().profile;

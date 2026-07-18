@@ -20,11 +20,18 @@ import { CompanySettings } from './components/CompanySettings';
 import { UserManagement } from './components/UserManagement';
 import { ToastProvider } from './components/Toast';
 import { MigrationBanner } from './components/MigrationBanner';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Formatea una fecha usando componentes LOCALES (evita el corrimiento de día
+// por UTC que hacía que registros de la noche cayeran en el día/mes siguiente).
+function formatLocalDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function getCurrentMonthRange() {
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const start = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  const end = formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   return { start, end };
 }
 
@@ -103,20 +110,22 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <ToastProvider />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <AppContent />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ToastProvider />
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <AppContent />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
